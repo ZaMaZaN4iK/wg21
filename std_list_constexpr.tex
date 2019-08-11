@@ -340,6 +340,8 @@ template<class T, class Allocator, class Predicate>
 \end{itemdecl}
 \end{quote}
 
+\section{Implementation}
+Possible implementation can be found here: \href{https://github.com/ZaMaZaN4iK/llvm-project/tree/feature/list_constexpr}{LLVM fork}. Notice that when proposal was written constexpr destructors were not supported in Clang. Also in this implementation isn't used \cc{operator<=>} - bunch of old operators used instead (just because libcxx at the moment doesn't use \cc{operator<=>} for \cc{std::forward_list}).
 
 \section{References}
 \renewcommand{\section}[2]{}%
