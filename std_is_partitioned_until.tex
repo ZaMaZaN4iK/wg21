@@ -36,9 +36,6 @@
 \end{itemize}
 
 
-\section{Abstract}
-
-
 \section{Motivation}
 \cc{std::is_partitioned} was added long time ago to the standard library. The algorithm is useful but sometimes we need an infromation about "where a partition is broken". \cc{std::is_partitioned} returns only \cc{bool} and we cannot change an interface of existing function. So we can add additional function {std::is_partitioned_until} which returns an iterator instead of bool. \cc{partition_point} cannot be used here because it works only on partitioned ranges.
 
