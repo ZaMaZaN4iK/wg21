@@ -35,7 +35,6 @@
   \item R0 -- Initial draft
 \end{itemize}
 
-
 \section{Motivation}
 \cc{std::is_partitioned} was added long time ago to the standard library. The algorithm is useful but sometimes we need an infromation about "where a partition is broken". \cc{std::is_partitioned} returns only \cc{bool} and we cannot change an interface of existing function. So we can add additional function {std::is_partitioned_until} which returns an iterator instead of bool. \cc{partition_point} cannot be used here because it works only on partitioned ranges.
 
@@ -59,7 +58,7 @@ template<input_iterator I, sentinel_for<I> S, class Proj = identity,
                                                         Proj proj = {});	
 template<input_range R, class Proj = identity, 
          indirect_unary_predicate<projected<iterator_t<R>, Proj>> Pred>
-  constexpr iterator_t<R> is_partitioned_until(R&& r, Pred pred, Proj proj = {});
+  constexpr iterator_t<R> ranges::is_partitioned_until(R&& r, Pred pred, Proj proj = {});
 \end{itemdecl}
     Let proj be identity{} for the overloads with no parameter named proj.
     
@@ -84,8 +83,7 @@ is_partitioned_until ( c.end (), c.end (), isOdd ) // end, because of empty rang
 \end{itemdecl}
 \end{quote}
 
-
-\section{Implementation}
-Possible implementation can be found in Boost.Algorithm: \href{https://github.com/boostorg/algorithm/blob/develop/include/boost/algorithm/is_partitioned_until.hpp}{GitHub}. Documentation can be found here: \href{https://www.boost.org/doc/libs/1_70_0/libs/algorithm/doc/html/the_boost_algorithm_library/Misc/is_partitioned_until.html}{Boost}. Available in Boost.Algorithm since Boost 1.65.
+\section{Possible implementation}
+Also possible implementation can be found in Boost.Algorithm: \href{https://github.com/boostorg/algorithm/blob/master/include/boost/algorithm/is_partitioned_until.hpp}{GitHub}. Documentation can be found here: \href{https://www.boost.org/doc/libs/1_70_0/libs/algorithm/doc/html/the_boost_algorithm_library/Misc/is_partitioned_until.html}{Boost}. Available in Boost.Algorithm since Boost 1.65.
 
 \end{document}
