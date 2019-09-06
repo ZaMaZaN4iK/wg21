@@ -1,0 +1,137 @@
+\documentclass{wg21}
+
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage{ulem}
+\usepackage{fullpage}
+\usepackage{parskip}
+\usepackage{csquotes}
+\usepackage{listings}
+\usepackage{minted}
+\usepackage{enumitem}
+
+\lstdefinestyle{base}{
+  language=c++,
+  breaklines=false,
+  basicstyle=\ttfamily\color{black},
+  moredelim=**[is][\color{green!50!black}]{@}{@},
+  escapeinside={(*@}{@*)}
+}
+
+\newcommand{\cc}[1]{\mintinline{c++}{#1}}
+\newminted[cpp]{c++}{}
+
+
+\title{Add \cc{std::apply_permutation} algorithm}
+\docnumber{P0000}
+\audience{LEWGI}
+\author{Alexander Zaitsev}{zamazan4ik@tut.by, zamazan4ik@gmail.com}
+
+\begin{document}
+\maketitle
+
+\section{Revision history}
+\begin{itemize}
+  \item R0 -- Initial draft
+\end{itemize}
+
+\section{Issues}
+\begin{itemize}
+    \item \cc{apply_reverse_permutation} name is a little bit ugly. Suggestions are welcomed.
+\end{itemize}
+
+\section{Motivation}
+
+\section{Proposed wording}
+Add to \textbf{[alg.modifying.operations] 25.6} new subsection \textbf{[alg.permute] Permute 25.6.15}
+after \textbf{[alg.shift] 25.6.14}:
+\begin{quote}
+\begin{itemdecl}
+template<class RandomAccessIterator1, class RandomAccessIterator2>
+  constexpr void apply_permutation(RandomAccessIterator1 item_first,
+                                   RandomAccessIterator1 item_last,
+                                   RandomAccessIterator2 ind_first,
+                                   RandomAccessIterator2 ind_last);
+template<class ExecutionPolicy, class RandomAccessIterator1, class RandomAccessIterator2>
+  constexpr void apply_permutation(ExecutionPolicy&& exec,
+                                   RandomAccessIterator1 item_first,
+                                   RandomAccessIterator1 item_last,
+                                   RandomAccessIterator2 ind_first,
+                                   RandomAccessIterator2 ind_last);
+
+template<random_access_iterator I1, random_access_iterator I2, sentinel_for<I1> S1,
+         sentinel_for<I2> S2, class Proj = identity>
+  constexpr I1 ranges::apply_permutation(I1 item_first, S1 item_last, I2 ind_first, S2 ind_last,
+                                         Proj proj = {});
+template<random_access_range R1, random_access_range R2, class Proj = identity>
+  constexpr safe_iterator_t<R1> ranges::apply_permutation(R1&& r1, R2&& r2, Proj proj = {});                                         
+\end{itemdecl}
+
+    Let proj be identity{} for the overloads with no parameter named proj.
+
+    Effects: Reorders the elements in the range [item_first, item_last) according to the order sequence [ind_first, ind_last). Every value in order sequence means where the item comes from.
+    
+    Requires: For the overloads in namespace std, RandomAccessIterator1 shall meet the Cpp17ValueSwappable requirements. Order sequence needs to be exactly a permutation of the sequence [0, 1, ... , N], where N is the biggest index in the item sequence (zero-indexed).
+
+    Returns: item_last, for the overloads in namespace ranges.
+
+    Complexity: Linear.
+    
+    Note: Order sequense gets permuted.
+
+\begin{itemdecl}
+template<class RandomAccessIterator1, class RandomAccessIterator2>
+  constexpr void apply_reverse_permutation(RandomAccessIterator1 item_first,
+                                           RandomAccessIterator1 item_last,
+                                           RandomAccessIterator2 ind_first,
+                                           RandomAccessIterator2 ind_last);
+template<class ExecutionPolicy, class RandomAccessIterator1, class RandomAccessIterator2>
+  constexpr void apply_permutation(ExecutionPolicy&& exec,
+                                   RandomAccessIterator1 item_first,
+                                   RandomAccessIterator1 item_last,
+                                   RandomAccessIterator2 ind_first,
+                                   RandomAccessIterator2 ind_last);
+                                               
+template<random_access_iterator I1, random_access_iterator I2,
+         sentinel_for<I1> S1, sentinel_for<I2> S2, class Proj = identity>
+  constexpr I1 ranges::apply_reverse_permutation(I1 item_first, S1 item_last,
+                                                 I2 ind_first, S2 ind_last, Proj proj = {});                                           	
+template<random_access_range R1, random_access_range R2, class Proj = identity>
+  constexpr safe_iterator_t<R1> ranges::apply_reverse_permutation(R1&& r1, R2&& r2,
+                                                                  Proj proj = {});  
+\end{itemdecl}
+
+    Let proj be identity{} for the overloads with no parameter named proj.
+    
+    Effects: Reorders the elements in the range [item_first, item_last) according to the order sequence [ind_first, ind_last). Every value in order sequence means where the item goes to.
+    
+    Requires: For the overloads in namespace std, RandomAccessIterator1 shall meet the Cpp17ValueSwappable requirements. Order sequence needs to be exactly a permutation of the sequence [0, 1, ... , N], where N is the biggest index in the item sequence (zero-indexed).
+    
+    Returns: item_last, for the overloads in namespace ranges.
+    
+    Complexity: Linear.
+    
+    Note: Order sequense gets permuted.
+\end{quote}
+
+\section{Examples}
+Given the containers: \cc{std::vector<int> emp_vec, emp_order, one{1}, one_order{0}, two{1,2}},
+\cc{two_order{1,0}, vec{1, 2, 3, 4, 5}, order{4, 2, 3, 1, 0}}, then 
+\begin{quote}
+\begin{itemdecl}    
+apply_permutation(emp_vec, emp_order))  // no changes
+apply_reverse_permutation(emp_vec, emp_order))  // no changes
+apply_permutation(one, one_order)  // no changes
+apply_reverse_permutation(one, one_order)  // no changes
+apply_permutation(two, two_order)  // two:{2,1}
+apply_reverse_permutation(two, two_order)  // two:{2,1}
+apply_permutation(vec, order)  // vec:{5, 3, 4, 2, 1}
+apply_reverse_permutation(vec, order)  // vec:{5, 4, 2, 3, 1}
+\end{itemdecl}
+\end{quote}
+
+
+\section{Possible implementation}
+Possible implementation (without version with Execution policy) can be found in Boost.Algorithm: \href{https://github.com/boostorg/algorithm/blob/master/include/boost/algorithm/apply_permutation.hpp}{GitHub}. Documentation can be found here: \href{https://www.boost.org/doc/libs/1_70_0/libs/algorithm/doc/html/the_boost_algorithm_library/Misc/apply_permutation.html}{Boost}. Available in Boost.Algorithm since Boost 1.68.
+Original implementation and ideas from Microsoft blog: \href{https://blogs.msdn.microsoft.com/oldnewthing/20170102-00/?p=95095}{1}, \href{https://blogs.msdn.microsoft.com/oldnewthing/20170103-00/?p=95105}{2}, \href{https://blogs.msdn.microsoft.com/oldnewthing/20170104-00/?p=95115}{3}, \href{https://blogs.msdn.microsoft.com/oldnewthing/20170109-00/?p=95145}{4}, \href{https://blogs.msdn.microsoft.com/oldnewthing/20170110-00/?p=95155}{5}, \href{https://blogs.msdn.microsoft.com/oldnewthing/20170111-00/?p=95165}{6}.
+\end{document}
