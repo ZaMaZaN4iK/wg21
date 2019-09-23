@@ -1,0 +1,251 @@
+\documentclass{wg21}
+
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage{ulem}
+\usepackage{fullpage}
+\usepackage{parskip}
+\usepackage{csquotes}
+\usepackage{listings}
+\usepackage{minted}
+\usepackage{enumitem}
+
+\lstdefinestyle{base}{
+  language=c++,
+  breaklines=false,
+  basicstyle=\ttfamily\color{black},
+  moredelim=**[is][\color{green!50!black}]{@}{@},
+  escapeinside={(*@}{@*)}
+}
+
+\newcommand{\cc}[1]{\mintinline{c++}{#1}}
+\newminted[cpp]{c++}{}
+
+
+\title{Making \cc{std::queue} constexpr}
+\docnumber{P0000}
+\audience{LEWGI}
+\author{Alexander Zaitsev}{zamazan4ik@tut.by, zamazan4ik@gmail.com}
+
+\begin{document}
+\maketitle
+
+\section{Revision history}
+\begin{itemize}
+  \item R0 -- Initial draft
+\end{itemize}
+
+
+\section{Abstract}
+\cc{std::queue} is not currently \cc{constexpr} friendly. With the loosening
+of requirements on \cc{constexpr} in \cite{P0784R1} and related papers, we
+can now make \cc{std::queue} \cc{constexpr}, and we should in order to support
+the \cc{constexpr} reflection effort (and other evident use cases).
+
+\section{Motivation}
+\cc{std::queue} is not so widely-used standard container as \cc{std::vector} or \cc{std::string}. But there is no reason to keep \cc{std::queue} in non-\cc{constexpr} state since one of the main directions of C++ evolution is compile-time programming. And we want to use in compile-time as much as possible from STL. And this paper makes \cc{std::queue} available in compile-time.
+
+\section{Proposed wording}
+We basically mark all the member and non-member functions of \cc{std::queue} \cc{constexpr}.
+
+Direction to the editor: please apply \cc{constexpr} to all of \cc{std::queue},
+including any additions that might be missing from this paper.
+
+In \textbf{[support.limits.general]}, add the new feature test macro
+\cc{__cpp_lib_constexpr_queue} with the corresponding value for header
+\cc{<queue>} to Table 36 \textbf{[tab:support.ft]}.
+
+Change in \textbf{[queue.syn] 22.6.2}:
+\begin{quote}
+\begin{codeblock}
+#include <initializer_list>
+
+namespace std {
+  template<class T, class Container = deque<T>> class queue;
+  
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator==(const queue<T, Container>& x, const queue<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator!=(const queue<T, Container>& x, const queue<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator< (const queue<T, Container>& x, const queue<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator> (const queue<T, Container>& x, const queue<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator<=(const queue<T, Container>& x, const queue<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator>=(const queue<T, Container>& x, const queue<T, Container>& y);
+  template<class T, three_way_comparable Container>
+    @\added{constexpr}@ compare_three_way_result_t<Container>
+      operator<=>(const queue<T, Container>& x, const queue<T, Container>& y);
+  
+  template<class T, class Container>
+    @\added{constexpr}@ void swap(queue<T, Container>& x, queue<T, Container>& y)       
+      noexcept(noexcept(x.swap(y)));
+  template<class T, class Container, class Alloc>
+    struct uses_allocator<queue<T, Container>, Alloc>;
+}
+\end{codeblock}
+[...]
+\end{quote}
+
+Change in \textbf{[queue.defn] 22.6.4.1}:
+\begin{quote}
+\begin{codeblock}
+namespace std {
+  template<class T, class Container = deque<T>>
+  class queue {
+  public:
+  	using value_type      = typename Container::value_type;
+  	using reference       = typename Container::reference;
+  	using const_reference = typename Container::const_reference;
+  	using size_type       = typename Container::size_type;
+  	using container_type  =          Container;
+  	
+  protected:
+  	Container c;
+  	
+  public:
+  	@\added{constexpr}@ queue() : queue(Container()) {}
+  	@\added{constexpr}@ explicit queue(const Container&);
+  	@\added{constexpr}@ explicit queue(Container&&);
+  	template<class Alloc> @\added{constexpr}@ explicit queue(const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ queue(const Container&, const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ queue(Container&&, const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ queue(const queue&, const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ queue(queue&&, const Alloc&);
+  	
+  	[[nodiscard]] @\added{constexpr}@ bool empty() const    { return c.empty(); }
+  	@\added{constexpr}@ size_type         size()  const     { return c.size(); }
+  	@\added{constexpr}@ reference         front()           { return c.front(); }
+  	@\added{constexpr}@ const_reference   front() const     { return c.front(); }
+  	@\added{constexpr}@ reference         back()            { return c.back(); }
+  	@\added{constexpr}@ const_reference   back() const      { return c.back(); }
+  	@\added{constexpr}@ void push(const value_type& x)      { c.push_back(x); }
+  	@\added{constexpr}@ void push(value_type&& x)           { c.push_back(std::move(x)); }
+  	template<class... Args>
+  	  @\added{constexpr}@ decltype(auto) emplace(Args&&... args)
+  	    { return c.emplace_back(std::forward<Args>(args)...); }
+  	@\added{constexpr}@ void pop()                          { c.pop_front(); }
+  	@\added{constexpr}@ void swap(queue& q) noexcept(is_nothrow_swappable_v<Container>)
+  	  { using std::swap; swap(c, q.c); }
+  };
+	
+  template<class Container>
+    queue(Container) -> queue<typename Container::value_type, Container>;
+  
+  template<class Container, class Allocator>
+    queue(Container, Allocator) -> queue<typename Container::value_type, Container>;
+  
+  template<class T, class Container>
+    @\added{constexpr}@ void swap(queue<T, Container>& x, queue<T, Container>& y)
+      noexcept(noexcept(x.swap(y)));
+  
+  template<class T, class Container, class Alloc>
+    struct uses_allocator<queue<T, Container>, Alloc>
+      : uses_allocator<Container, Alloc>::type { };
+}
+\end{codeblock}%
+\end{quote}
+
+Change in \textbf{[queue.cons] 22.6.4.2}:
+\begin{quote}
+\begin{itemdecl}
+@\added{constexpr}@ explicit queue(const Container& cont);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+@\added{constexpr}@ explicit queue(Container&& cont);
+\end{itemdecl}
+\end{quote}
+
+Change in \textbf{[queue.cons.alloc] 22.6.4.3}:
+\begin{quote}
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ explicit queue(const Alloc& a);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ queue(const container_type& cont, const Alloc& a);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ queue(container_type&& cont, const Alloc& a);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ queue(const queue& q, const Alloc& a);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ queue(queue&& q, const Alloc& a);
+\end{itemdecl}
+[...]
+\end{quote}
+
+Change in \textbf{[queue.ops] 22.6.4.4}:
+\begin{quote}
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator==(const queue<T, Container>& x, const queue<T, Container>& y);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator!=(const queue<T, Container>& x,  const queue<T, Container>& y);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator< (const queue<T, Container>& x, const queue<T, Container>& y);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator> (const queue<T, Container>& x, const queue<T, Container>& y);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator<=(const queue<T, Container>& x, const queue<T, Container>& y);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator>=(const queue<T, Container>& x,
+                                      const queue<T, Container>& y);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, three_way_comparable Container>
+  @\added{constexpr}@ compare_three_way_result_t<Container>
+    operator<=>(const queue<T, Container>& x, const queue<T, Container>& y);	
+\end{itemdecl}
+[...]
+\end{quote}
+
+Change in \textbf{[queue.special] 22.6.4.5}:
+\begin{quote}
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ void swap(queue<T, Container>& x, queue<T, Container>& y) 
+    noexcept(noexcept(x.swap(y)));
+\end{itemdecl}
+
+\end{quote}
+
+\section{Implementation}
+Possible implementation can be found here: \href{https://github.com/ZaMaZaN4iK/llvm-project/tree/feature/queue_constexpr}{LLVM fork}. Notice that when proposal was written constexpr destructors were not supported in Clang.
+
+\section{References}
+\renewcommand{\section}[2]{}%
+\begin{thebibliography}{9}
+
+\bibitem[P0784R1]{P0784R1}
+  Multiple authors,
+  \emph{Standard containers and constexpr}\newline
+  \url{http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0784r1.html}
+
+\end{thebibliography}
+
+\end{document}
