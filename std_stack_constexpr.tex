@@ -1,0 +1,243 @@
+\documentclass{wg21}
+
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage{ulem}
+\usepackage{fullpage}
+\usepackage{parskip}
+\usepackage{csquotes}
+\usepackage{listings}
+\usepackage{minted}
+\usepackage{enumitem}
+
+\lstdefinestyle{base}{
+  language=c++,
+  breaklines=false,
+  basicstyle=\ttfamily\color{black},
+  moredelim=**[is][\color{green!50!black}]{@}{@},
+  escapeinside={(*@}{@*)}
+}
+
+\newcommand{\cc}[1]{\mintinline{c++}{#1}}
+\newminted[cpp]{c++}{}
+
+
+\title{Making \cc{std::stack} constexpr}
+\docnumber{P0000}
+\audience{LEWGI}
+\author{Alexander Zaitsev}{zamazan4ik@tut.by, zamazan4ik@gmail.com}
+
+\begin{document}
+\maketitle
+
+\section{Revision history}
+\begin{itemize}
+  \item R0 -- Initial draft
+\end{itemize}
+
+
+\section{Abstract}
+\cc{std::stack} is not currently \cc{constexpr} friendly. With the loosening
+of requirements on \cc{constexpr} in \cite{P0784R1} and related papers, we
+can now make \cc{std::stack} \cc{constexpr}, and we should in order to support
+the \cc{constexpr} reflection effort (and other evident use cases).
+
+\section{Motivation}
+\cc{std::stack} is not so widely-used standard container as \cc{std::vector} or \cc{std::string}. But there is no reason to keep \cc{std::stack} in non-\cc{constexpr} state since one of the main directions of C++ evolution is compile-time programming. And we want to use in compile-time as much as possible from STL. And this paper makes \cc{std::stack} available in compile-time.
+
+\section{Proposed wording}
+We basically mark all the member and non-member functions of \cc{std::stack} \cc{constexpr}.
+
+Direction to the editor: please apply \cc{constexpr} to all of \cc{std::stack},
+including any additions that might be missing from this paper.
+
+In \textbf{[support.limits.general]}, add the new feature test macro
+\cc{__cpp_lib_constexpr_stack} with the corresponding value for header
+\cc{<stack>} to Table 36 \textbf{[tab:support.ft]}.
+
+Change in \textbf{[stack.syn] 22.6.3}:
+\begin{quote}
+\begin{codeblock}
+#include <initializer_list>
+
+namespace std {
+  template<class T, class Container = deque<T>> class stack;
+  
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator==(const stack<T, Container>& x, const stack<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator!=(const stack<T, Container>& x, const stack<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator< (const stack<T, Container>& x, const stack<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator> (const stack<T, Container>& x, const stack<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator<=(const stack<T, Container>& x, const stack<T, Container>& y);
+  template<class T, class Container>
+    @\added{constexpr}@ bool operator>=(const stack<T, Container>& x, const stack<T, Container>& y);
+  template<class T, three_way_comparable Container>
+    @\added{constexpr}@ compare_three_way_result_t<Container>
+      operator<=>(const stack<T, Container>& x, const stack<T, Container>& y);
+  
+  template<class T, class Container>
+    @\added{constexpr}@ void swap(stack<T, Container>& x, stack<T, Container>& y) 
+      noexcept(noexcept(x.swap(y)));
+  template<class T, class Container, class Alloc>
+    struct uses_allocator<stack<T, Container>, Alloc>;
+}
+\end{codeblock}
+\end{quote}
+
+Change in \textbf{[stack.defn] 22.6.6.1}:
+\begin{quote}
+\begin{codeblock}
+namespace std {
+  template<class T, class Container = deque<T>>
+  class stack {
+  public:
+  	using value_type      = typename Container::value_type;
+  	using reference       = typename Container::reference;
+  	using const_reference = typename Container::const_reference;
+  	using size_type       = typename Container::size_type;
+  	using container_type  = Container;
+  	
+  protected:
+  	Container c;
+  	
+  public:
+  	@\added{constexpr}@ stack() : stack(Container()) {}
+  	@\added{constexpr}@ explicit stack(const Container&);
+  	@\added{constexpr}@ explicit stack(Container&&);
+  	template<class Alloc> @\added{constexpr}@ explicit stack(const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ stack(const Container&, const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ stack(Container&&, const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ stack(const stack&, const Alloc&);
+  	template<class Alloc> @\added{constexpr}@ stack(stack&&, const Alloc&);
+  	
+  	[[nodiscard]] @\added{constexpr}@ bool empty() const    { return c.empty(); }
+  	@\added{constexpr}@ size_type size()  const             { return c.size(); }
+  	@\added{constexpr}@ reference         top()             { return c.back(); }
+  	@\added{constexpr}@ const_reference   top() const       { return c.back(); }
+  	@\added{constexpr}@ void push(const value_type& x)      { c.push_back(x); }
+  	@\added{constexpr}@ void push(value_type&& x)           { c.push_back(std::move(x)); }
+  	template<class... Args>
+  	  @\added{constexpr}@ decltype(auto) emplace(Args&&... args)
+  	    { return c.emplace_back(std::forward<Args>(args)...); }
+  	@\added{constexpr}@ void pop()                          { c.pop_back(); }
+  	@\added{constexpr}@ void swap(stack& s) noexcept(is_nothrow_swappable_v<Container>)
+  	  { using std::swap; swap(c, s.c); }
+  };
+	
+  template<class Container>
+    stack(Container) -> stack<typename Container::value_type, Container>;
+  
+  template<class Container, class Allocator>
+    stack(Container, Allocator) -> stack<typename Container::value_type, Container>;
+  
+  template<class T, class Container, class Alloc>
+    struct uses_allocator<stack<T, Container>, Alloc>
+  : uses_allocator<Container, Alloc>::type { };
+}
+\end{codeblock}%
+\end{quote}
+
+Change in \textbf{[stack.cons] 22.6.6.2}:
+\begin{quote}
+\begin{itemdecl}
+@\added{constexpr}@ explicit stack(const Container& cont);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+@\added{constexpr}@ explicit stack(Container&& cont);
+\end{itemdecl}
+\end{quote}
+
+Change in \textbf{[stack.cons.alloc] 22.6.6.3}:
+\begin{quote}
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ explicit stack(const Alloc& a);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ stack(const container_type& cont, const Alloc& a);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ stack(container_type&& cont, const Alloc& a);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ stack(const stack& s, const Alloc& a);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class Alloc> @\added{constexpr}@ stack(stack&& s, const Alloc& a);	
+\end{itemdecl}
+[...]
+\end{quote}
+
+Change in \textbf{[stack.ops] 22.6.6.4}:
+\begin{quote}
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator==(const stack<T, Container>& x, const stack<T, Container>& y);
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator!=(const stack<T, Container>& x, const stack<T, Container>& y);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator< (const stack<T, Container>& x, const stack<T, Container>& y);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator> (const stack<T, Container>& x, const stack<T, Container>& y);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator<=(const stack<T, Container>& x, const stack<T, Container>& y);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ bool operator>=(const stack<T, Container>& x, const stack<T, Container>& y);	
+\end{itemdecl}
+[...]
+\begin{itemdecl}
+template<class T, three_way_comparable Container>
+  @\added{constexpr}@ compare_three_way_result_t<Container>
+    operator<=>(const stack<T, Container>& x, const stack<T, Container>& y);	
+\end{itemdecl}
+[...]
+\end{quote}
+
+Change in \textbf{[stack.special] 22.6.6.5}:
+\begin{quote}
+\begin{itemdecl}
+template<class T, class Container>
+  @\added{constexpr}@ void swap(stack<T, Container>& x, stack<T, Container>& y) 
+    noexcept(noexcept(x.swap(y)));	
+\end{itemdecl}
+
+\end{quote}
+
+\section{Implementation}
+Possible implementation can be found here: \href{https://github.com/ZaMaZaN4iK/llvm-project/tree/feature/stack_constexpr}{LLVM fork}. Notice that when proposal was written constexpr destructors were not supported in Clang.
+
+\section{References}
+\renewcommand{\section}[2]{}%
+\begin{thebibliography}{9}
+
+\bibitem[P0784R1]{P0784R1}
+  Multiple authors,
+  \emph{Standard containers and constexpr}\newline
+  \url{http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0784r1.html}
+
+\end{thebibliography}
+
+\end{document}
