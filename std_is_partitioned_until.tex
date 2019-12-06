@@ -47,8 +47,8 @@ template<class InputIterator, class Predicate>
   constexpr InputIterator is_partitioned_until(InputIterator first, InputIterator last,
                                                Predicate pred);
 template<class ExecutionPolicy, class InputIterator, class Predicate>
-  InputIterator is_partitioned_until(ExecutionPolicy&& exec, InputIterator first,
-                                     InputIterator last, Predicate pred);
+  InputIterator is_partitioned_until(ExecutionPolicy&& exec, ForwardIterator first,
+                                     ForwardIterator last, Predicate pred);
 \end{itemdecl}
 
 \begin{itemdecl}
