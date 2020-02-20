@@ -59,7 +59,7 @@ Add to \textbf{[alg.partitions] 25.7.4}:
 template<class InputIterator, class Predicate>
   constexpr InputIterator is_partitioned_until(InputIterator first, InputIterator last,
                                                Predicate pred);
-template<class ExecutionPolicy, class InputIterator, class Predicate>
+template<class ExecutionPolicy, class ForwardIterator, class Predicate>
   ForwardIterator is_partitioned_until(ExecutionPolicy&& exec, ForwardIterator first,
                                        ForwardIterator last, Predicate pred);
 \end{itemdecl}
@@ -73,12 +73,14 @@ template<input_range R, class Proj = identity,
          indirect_unary_predicate<projected<iterator_t<R>, Proj>> Pred>
   constexpr borrowed_iterator_t<R> ranges::is_partitioned_until(R&& r, Pred pred,
                                                                 Proj proj = {});
-\end{itemdecl}
-    Let proj be identity{} for the overloads with no parameter named proj.
-    
-    Returns: the last iterator \cc{it} in the sequence [first, last) for which the \cc{is_partitioned(first, it)} is true.
-    
-    Complexity: Linear. At most last - first applications of pred and proj.
+\end{itemdecl} 
+\begin{itemdescr}
+Let \cc{proj} be \cc{identity{}} for the overloads with no parameter named \cc{proj}.	
+	
+\returns The last iterator \cc{it} in the sequence \cc{[first, last)} for which the \cc{is_partitioned(first, it)} is true.
+
+\complexity Linear. At most \cc{last - first} applications of \cc{pred} and \cc{proj}.
+\end{itemdescr}    
 [...]
 \end{quote}
 
